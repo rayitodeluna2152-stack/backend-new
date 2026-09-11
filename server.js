@@ -91,7 +91,7 @@ app.post("/api/ia/lengua", async (req, res) => {
         const { mensaje } = req.body;
 
         const respuesta = await groq.chat.completions.create({
-            model: "llama-3.1-70b-versatile",
+            model: "llama3-8b-8192",
             messages: [
                 { 
                     role: "system", 

@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const express = require('express');
 const cors = require('cors');
-const Groq = require('groq-sdk');
+const OpenAI = require("openai");
 
 const app = express();
 
@@ -10,23 +10,52 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ⭐ LOG GLOBAL PARA VER TODAS LAS PETICIONES
+// LOG GLOBAL
 app.use((req, res, next) => {
     console.log("➡️ Nueva petición:", req.method, req.url);
     next();
 });
 
-// ------------------ IA GROQ ------------------
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
+// ------------------ LIMITE DE MENSAJES POR DÍA ------------------
+const LIMITE_MENSAJES = 20;
+const usoPorIP = new Map();
+
+function puedeUsarIA(ip) {
+    const hoy = new Date().toDateString();
+
+    if (!usoPorIP.has(ip)) {
+        usoPorIP.set(ip, { fecha: hoy, mensajes: 0 });
+    }
+
+    const datos = usoPorIP.get(ip);
+
+    // Si cambia el día, reiniciar contador
+    if (datos.fecha !== hoy) {
+        datos.fecha = hoy;
+        datos.mensajes = 0;
+    }
+
+    if (datos.mensajes >= LIMITE_MENSAJES) {
+        return false;
+    }
+
+    datos.mensajes++;
+    usoPorIP.set(ip, datos);
+    return true;
+}
+
+// ------------------ IA OPENAI ------------------
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
 });
 
 // ------------------ FUNCIÓN PARA CREAR PROFESORES ------------------
 async function generarRespuesta(systemPrompt, mensaje) {
     try {
-        console.log("🧠 Mensaje enviado a Groq:", mensaje); // ⭐ LOG
-        const completion = await groq.chat.completions.create({
-      model: "llama3-70b-8192",
+        console.log("🧠 Mensaje enviado a OpenAI:", mensaje);
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4.1-mini",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: mensaje }
@@ -35,14 +64,21 @@ async function generarRespuesta(systemPrompt, mensaje) {
 
         return completion.choices[0].message.content;
     } catch (error) {
-        console.error("❌ Error en Groq:", error);
+        console.error("❌ Error en OpenAI:", error);
         return "Lo siento, hubo un problema generando la respuesta.";
     }
 }
 
 // ------------------ IA GENERAL ------------------
 app.post("/api/ia", async (req, res) => {
-    console.log("📩 Body recibido en /api/ia:", req.body); // ⭐ LOG
+    console.log("📩 Body recibido en /api/ia:", req.body);
+
+    const ip = req.ip;
+    if (!puedeUsarIA(ip)) {
+        return res.json({
+            respuesta: "Has alcanzado el límite de mensajes diarios. Vuelve mañana."
+        });
+    }
 
     try {
         const { mensaje } = req.body;
@@ -63,7 +99,14 @@ app.post("/api/ia", async (req, res) => {
 
 function crearRutaIA(ruta, prompt) {
     app.post(ruta, async (req, res) => {
-        console.log(`📩 Body recibido en ${ruta}:`, req.body); // ⭐ LOG
+        console.log(`📩 Body recibido en ${ruta}:`, req.body);
+
+        const ip = req.ip;
+        if (!puedeUsarIA(ip)) {
+            return res.json({
+                respuesta: "Has alcanzado el límite de mensajes diarios. Vuelve mañana."
+            });
+        }
 
         try {
             const texto = await generarRespuesta(prompt, req.body.mensaje);

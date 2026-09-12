@@ -26,7 +26,7 @@ async function generarRespuesta(systemPrompt, mensaje) {
     try {
         console.log("🧠 Mensaje enviado a Groq:", mensaje); // ⭐ LOG
         const completion = await groq.chat.completions.create({
-            model: "llama3-8b-8192",
+           model: "llama3-groq-70b-tool-use-preview",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: mensaje }

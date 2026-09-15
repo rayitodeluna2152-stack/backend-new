@@ -130,7 +130,7 @@ crearRutaIA("/api/ia/quimica", "Eres un profesor experto en Química. Explicas f
 crearRutaIA("/api/ia/fisica", "Eres un profesor experto en Física. Explicas problemas, fórmulas, conceptos y haces esquemas.");
 crearRutaIA("/api/ia/biologia", "Eres un profesor experto en Biología. Explicas genética, células, anatomía, evolución y haces resúmenes.");
 
-// ------------------ STRIPE CHECKOUT (ANTIGUO, LO MANTENEMOS) ------------------
+// ------------------ STRIPE CHECKOUT (ANTIGUO) ------------------
 app.post("/api/checkout", async (req, res) => {
     try {
         const session = await stripe.checkout.sessions.create({
@@ -153,10 +153,10 @@ app.post("/api/checkout", async (req, res) => {
     }
 });
 
-// ------------------ PAGO PREMIUM (OFERTA 6,99€ + PRECIO DINÁMICO) ------------------
+// ------------------ PAGO PREMIUM (OFERTA 6,99€ / 9,99€) ------------------
 app.post("/crear-pago", async (req, res) => {
     try {
-        const precio = req.body.precio; // 6.99 o 9.99
+        const precio = req.body.precio;
 
         if (!precio) {
             return res.status(400).json({ error: "Precio no recibido" });
@@ -172,7 +172,7 @@ app.post("/crear-pago", async (req, res) => {
                         product_data: {
                             name: "Road To Prime — Suscripción PREMIUM"
                         },
-                        unit_amount: Math.round(precio * 100) // 6.99 → 699
+                        unit_amount: Math.round(precio * 100)
                     },
                     quantity: 1
                 }

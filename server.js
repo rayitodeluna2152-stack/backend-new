@@ -29,7 +29,6 @@ function puedeUsarIA(ip) {
 
     const datos = usoPorIP.get(ip);
 
-    // Si cambia el día, reiniciar contador
     if (datos.fecha !== hoy) {
         datos.fecha = hoy;
         datos.mensajes = 0;
@@ -130,6 +129,65 @@ crearRutaIA("/api/ia/filosofia", "Eres un profesor experto en Filosofía. Explic
 crearRutaIA("/api/ia/quimica", "Eres un profesor experto en Química. Explicas formulación, reacciones, estequiometría y resúmenes claros.");
 crearRutaIA("/api/ia/fisica", "Eres un profesor experto en Física. Explicas problemas, fórmulas, conceptos y haces esquemas.");
 crearRutaIA("/api/ia/biologia", "Eres un profesor experto en Biología. Explicas genética, células, anatomía, evolución y haces resúmenes.");
+
+// ------------------ STRIPE CHECKOUT (ANTIGUO, LO MANTENEMOS) ------------------
+app.post("/api/checkout", async (req, res) => {
+    try {
+        const session = await stripe.checkout.sessions.create({
+            mode: "payment",
+            payment_method_types: ["card"],
+            line_items: [
+                {
+                    price: process.env.STRIPE_PRICE_ID,
+                    quantity: 1
+                }
+            ],
+            success_url: "https://roadtoprime.vercel.app/premium-success.html",
+            cancel_url: "https://roadtoprime.vercel.app/premium-cancel.html"
+        });
+
+        res.json({ url: session.url });
+    } catch (error) {
+        console.error("❌ Error en Stripe:", error);
+        res.status(500).json({ error: "Error creando sesión de pago" });
+    }
+});
+
+// ------------------ PAGO PREMIUM (OFERTA 6,99€ + PRECIO DINÁMICO) ------------------
+app.post("/crear-pago", async (req, res) => {
+    try {
+        const precio = req.body.precio; // 6.99 o 9.99
+
+        if (!precio) {
+            return res.status(400).json({ error: "Precio no recibido" });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+            mode: "payment",
+            payment_method_types: ["card"],
+            line_items: [
+                {
+                    price_data: {
+                        currency: "eur",
+                        product_data: {
+                            name: "Road To Prime — Suscripción PREMIUM"
+                        },
+                        unit_amount: Math.round(precio * 100) // 6.99 → 699
+                    },
+                    quantity: 1
+                }
+            ],
+            success_url: "https://roadtoprime.vercel.app/premium-success.html",
+            cancel_url: "https://roadtoprime.vercel.app/premium-cancel.html"
+        });
+
+        res.json({ url: session.url });
+
+    } catch (error) {
+        console.error("❌ Error en Stripe:", error);
+        res.status(500).json({ error: "Error creando sesión de pago" });
+    }
+});
 
 // ------------------ PUERTO PARA RAILWAY ------------------
 const PORT = process.env.PORT || 3000;

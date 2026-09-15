@@ -100,7 +100,7 @@ function crearRutaIA(ruta, prompt) {
     app.post(ruta, async (req, res) => {
         console.log(`📩 Body recibido en ${ruta}:`, req.body);
 
-       const ip = req.headers["x-forwarded-for"] || req.ip || "0.0.0.0";
+        const ip = req.ip;
         if (!puedeUsarIA(ip)) {
             return res.json({
                 respuesta: "Has alcanzado el límite de mensajes diarios. Vuelve mañana."
@@ -130,7 +130,7 @@ crearRutaIA("/api/ia/quimica", "Eres un profesor experto en Química. Explicas f
 crearRutaIA("/api/ia/fisica", "Eres un profesor experto en Física. Explicas problemas, fórmulas, conceptos y haces esquemas.");
 crearRutaIA("/api/ia/biologia", "Eres un profesor experto en Biología. Explicas genética, células, anatomía, evolución y haces resúmenes.");
 
-// ------------------ STRIPE CHECKOUT (USANDO success.html / cancel.html) ------------------
+// ------------------ STRIPE CHECKOUT ------------------
 app.post("/api/checkout", async (req, res) => {
     try {
         const session = await stripe.checkout.sessions.create({
@@ -153,10 +153,10 @@ app.post("/api/checkout", async (req, res) => {
     }
 });
 
-// ------------------ PAGO PREMIUM (OFERTA 6,99€ / 9,99€) ------------------
+// ------------------ PAGO PREMIUM ------------------
 app.post("/crear-pago", async (req, res) => {
     try {
-        const precio = req.body.precio; // 6.99 o 9.99
+        const precio = req.body.precio;
 
         if (!precio) {
             return res.status(400).json({ error: "Precio no recibido" });
@@ -172,7 +172,7 @@ app.post("/crear-pago", async (req, res) => {
                         product_data: {
                             name: "Road To Prime — Suscripción PREMIUM"
                         },
-                        unit_amount: Math.round(precio * 100) // 6.99 → 699
+                        unit_amount: Math.round(precio * 100)
                     },
                     quantity: 1
                 }

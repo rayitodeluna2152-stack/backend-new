@@ -100,7 +100,7 @@ function crearRutaIA(ruta, prompt) {
     app.post(ruta, async (req, res) => {
         console.log(`📩 Body recibido en ${ruta}:`, req.body);
 
-        const ip = req.ip;
+       const ip = req.headers["x-forwarded-for"] || req.ip || "0.0.0.0";
         if (!puedeUsarIA(ip)) {
             return res.json({
                 respuesta: "Has alcanzado el límite de mensajes diarios. Vuelve mañana."

@@ -154,40 +154,29 @@ app.post("/api/checkout", async (req, res) => {
 });
 
 // ------------------ PAGO PREMIUM ------------------
-app.post("/crear-pago", async (req, res) => {
+async function pagarPremium() {
     try {
-        const precio = req.body.precio;
-
-        if (!precio) {
-            return res.status(400).json({ error: "Precio no recibido" });
-        }
-
-        const session = await stripe.checkout.sessions.create({
-            mode: "payment",
-            payment_method_types: ["card"],
-            line_items: [
-                {
-                    price_data: {
-                        currency: "eur",
-                        product_data: {
-                            name: "Road To Prime — Suscripción PREMIUM"
-                        },
-                        unit_amount: Math.round(precio * 100)
-                    },
-                    quantity: 1
-                }
-            ],
-            success_url: "https://roadtoprime.vercel.app/success.html",
-            cancel_url: "https://roadtoprime.vercel.app/cancel.html"
+        const respuesta = await fetch("https://backend-prime-production.up.railway.app/crear-pago", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ precio })
         });
 
-        res.json({ url: session.url });
+        const datos = await respuesta.json();
+
+        if (!datos.url) {
+            alert("Error: el servidor no devolvió la URL de Stripe.");
+            return;
+        }
+
+        window.location.href = datos.url;
 
     } catch (error) {
-        console.error("❌ Error en Stripe:", error);
-        res.status(500).json({ error: "Error creando sesión de pago" });
+        console.error("Error:", error);
+        alert("Hubo un problema al iniciar el pago.");
     }
-});
+}
+
 
 // ------------------ PUERTO PARA RAILWAY ------------------
 const PORT = process.env.PORT || 3000;

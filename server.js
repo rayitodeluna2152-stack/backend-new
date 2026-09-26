@@ -14,7 +14,6 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // LOG GLOBAL
 app.use((req, res, next) => {
     console.log("➡️ Nueva petición:", req.method, req.url);
@@ -135,15 +134,43 @@ crearRutaIA("/api/ia/quimica", "Eres un profesor experto en Química. Explicas f
 crearRutaIA("/api/ia/fisica", "Eres un profesor experto en Física. Explicas problemas, fórmulas, conceptos y haces esquemas.");
 crearRutaIA("/api/ia/biologia", "Eres un profesor experto en Biología. Explicas genética, células, anatomía, evolución y haces resúmenes.");
 
-// ------------------ STRIPE CHECKOUT ------------------
-app.post("/api/checkout", async (req, res) => {
+// ------------------ STRIPE CHECKOUT (PAGO PREMIUM) ------------------
+//
+// Esta ruta coincide con la que ya llama pago.html:
+// fetch("https://backend-prime-production.up.railway.app/crear-pago", ...)
+//
+// Calculamos el precio en el propio backend según las fechas de la oferta,
+// en vez de fiarnos del "precio" que manda el navegador (que cualquiera
+// podría manipular con las herramientas de desarrollador).
+//
+app.post("/crear-pago", async (req, res) => {
     try {
+        // --- Lógica de la oferta (25 sep -> 25 oct), calculada en el servidor ---
+        const hoy = new Date();
+        const inicioOferta = new Date("2026-09-25");
+        const finOferta = new Date("2026-10-25");
+
+        let precioFinal = 9.99; // precio normal en euros
+
+        if (hoy >= inicioOferta && hoy <= finOferta) {
+            precioFinal = 6.99; // precio de oferta
+        }
+
+        // Stripe espera el importe en céntimos (unidad mínima de la moneda)
+        const precioEnCentimos = Math.round(precioFinal * 100);
+
         const session = await stripe.checkout.sessions.create({
             mode: "payment",
             payment_method_types: ["card"],
             line_items: [
                 {
-                    price: process.env.STRIPE_PRICE_ID,
+                    price_data: {
+                        currency: "eur",
+                        product_data: {
+                            name: "Road To Prime - Plan PREMIUM"
+                        },
+                        unit_amount: precioEnCentimos
+                    },
                     quantity: 1
                 }
             ],
@@ -157,31 +184,6 @@ app.post("/api/checkout", async (req, res) => {
         res.status(500).json({ error: "Error creando sesión de pago" });
     }
 });
-
-// ------------------ PAGO PREMIUM ------------------
-async function pagarPremium() {
-    try {
-        const respuesta = await fetch("https://backend-prime-production.up.railway.app/crear-pago", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ precio })
-        });
-
-        const datos = await respuesta.json();
-
-        if (!datos.url) {
-            alert("Error: el servidor no devolvió la URL de Stripe.");
-            return;
-        }
-
-        window.location.href = datos.url;
-
-    } catch (error) {
-        console.error("Error:", error);
-        alert("Hubo un problema al iniciar el pago.");
-    }
-}
-
 
 // ------------------ PUERTO PARA RAILWAY ------------------
 const PORT = process.env.PORT || 3000;
